@@ -1,0 +1,46 @@
+name: Container
+
+# The gate that makes the deployment artifact real.
+#
+# This used to be `docker compose config -q`, which parses the YAML and stops
+# there. It passed for a compose file whose image could not build at all — the
+# Dockerfile looked for package.json in the wrong directory — and nothing
+# downstream found out until someone tried to run the project.
+#
+# Building is the only check that proves an image exists. Booting is the only
+# one that proves it serves.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  container:
+    name: Build and boot
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # --profile local brings up the project's own database. It is absent from
+      # the default profile because a deployment uses a shared instance instead
+      # (see deploy.yml), and a CI run without it would boot a backend with
+      # nothing to connect to and call that a pass.
+      - name: Build images
+        run: docker compose --profile local build
+
+      # --wait blocks until every service reports healthy, so the healthchecks
+      # in docker-compose.yml are what this step actually asserts.
+      - name: Boot the stack
+        run: docker compose --profile local up -d --wait
+
+      - name: Logs
+        if: failure()
+        run: docker compose --profile local logs --no-color --tail 200
+
+      - name: Tear down
+        if: always()
+        run: docker compose --profile local down -v --remove-orphans
