@@ -65,13 +65,13 @@ export const persistedTodoResponse: TodoListResponse = {
 export const oneHundredTodoResponse: TodoListResponse = {
   data: Array.from({ length: 100 }, (_, index) => {
     const padded = String(index + 1).padStart(3, "0");
-    const createdAt = `2026-08-11T12:${String(index).padStart(2, "0")}:00.000Z`;
+    const timestamp = new Date(Date.UTC(2026, 7, 11, 12, index, 0)).toISOString();
     return {
       id: `todo_20260811_bulk_${padded}`,
       title: `Saved database task ${padded}`,
       completed: index % 3 === 0,
-      createdAt,
-      updatedAt: createdAt,
+      createdAt: timestamp,
+      updatedAt: timestamp,
     };
   }),
   meta: {
