@@ -3,22 +3,19 @@ package db
 import (
 	"context"
 	"database/sql"
-	"embed"
 	"fmt"
-	"path/filepath"
 	"sort"
 	"strings"
-)
 
-//go:embed ../../migrations/*.up.sql
-var migrationFiles embed.FS
+	"github.com/ThanhNV121097/project-0e8b79be/backend/migrations"
+)
 
 func ApplyMigrations(ctx context.Context, database *sql.DB) error {
 	if _, err := database.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS schema_migrations (version text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())`); err != nil {
 		return fmt.Errorf("create schema_migrations: %w", err)
 	}
 
-	entries, err := migrationFiles.ReadDir("../../migrations")
+	entries, err := migrations.Files.ReadDir(".")
 	if err != nil {
 		return fmt.Errorf("read migrations: %w", err)
 	}
@@ -41,7 +38,7 @@ func ApplyMigrations(ctx context.Context, database *sql.DB) error {
 			continue
 		}
 
-		sqlBytes, err := migrationFiles.ReadFile(filepath.ToSlash(filepath.Join("../../migrations", name)))
+		sqlBytes, err := migrations.Files.ReadFile(name)
 		if err != nil {
 			return fmt.Errorf("read migration %s: %w", name, err)
 		}
