@@ -8,7 +8,7 @@ import {
   mockTodoError,
   toTodoListResponse,
   type TodoDto,
-} from "../lib/mock/single-page-todo-experience";
+} from "@/lib/mock/single-page-todo-experience";
 import styles from "./SinglePageTodoExperience.module.css";
 
 type ViewState = "default" | "loading" | "empty" | "error";
@@ -102,9 +102,7 @@ export default function SinglePageTodoExperience() {
       <section className={styles.hero} aria-labelledby="todo-page-title">
         <p className={styles.eyebrow}>Simple, saved, and ready</p>
         <h1 id="todo-page-title">Todo List App v2</h1>
-        <p>
-          A clean blue-and-white workspace for adding tasks, checking them off, and keeping the day moving without extra navigation.
-        </p>
+        <p>A clean blue-and-white workspace for adding tasks, checking them off, and keeping the day moving without extra navigation.</p>
       </section>
 
       <section className={styles.card} aria-labelledby="todo-card-title">
@@ -120,27 +118,11 @@ export default function SinglePageTodoExperience() {
 
         <form className={styles.toolbar} onSubmit={handleSubmit} noValidate>
           <div className={styles.field}>
-            <label className={styles.srOnly} htmlFor="todo-title">
-              Task name
-            </label>
-            <input
-              id="todo-title"
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              className={styles.input}
-              maxLength={MAX_TODO_TITLE_LENGTH + 1}
-              placeholder="Add a task, e.g. Send weekly update"
-              aria-describedby={validationMessage ? "todo-title-error" : undefined}
-            />
-            {validationMessage ? (
-              <p className={styles.validation} id="todo-title-error" role="alert">
-                {validationMessage}
-              </p>
-            ) : null}
+            <label className={styles.srOnly} htmlFor="todo-title">Task name</label>
+            <input id="todo-title" value={title} onChange={(event) => setTitle(event.target.value)} className={styles.input} maxLength={MAX_TODO_TITLE_LENGTH + 1} placeholder="Add a task, e.g. Send weekly update" aria-describedby={validationMessage ? "todo-title-error" : undefined} />
+            {validationMessage ? <p className={styles.validation} id="todo-title-error" role="alert">{validationMessage}</p> : null}
           </div>
-          <button className={styles.primaryButton} type="submit">
-            Add
-          </button>
+          <button className={styles.primaryButton} type="submit">Add</button>
         </form>
 
         <div className={styles.stateControls} aria-label="Preview todo states">
@@ -150,11 +132,7 @@ export default function SinglePageTodoExperience() {
           <button type="button" onClick={() => setViewState("error")}>Error</button>
         </div>
 
-        {saveMessage ? (
-          <p className={styles.notice} role="alert">
-            {saveMessage}
-          </p>
-        ) : null}
+        {saveMessage ? <p className={styles.notice} role="alert">{saveMessage}</p> : null}
 
         <div className={styles.summary} aria-live="polite">
           <span>{response.meta.total} total</span>
@@ -178,23 +156,9 @@ export default function SinglePageTodoExperience() {
           <ul className={styles.todoList} aria-live="polite">
             {visibleTodos.map((todo) => (
               <li className={styles.todoRow} data-completed={todo.status === "completed"} key={todo.id}>
-                <button
-                  className={styles.checkButton}
-                  type="button"
-                  aria-label={todo.status === "completed" ? `Mark ${todo.title} incomplete` : `Mark ${todo.title} complete`}
-                  onClick={() => toggleTodo(todo.id)}
-                >
-                  {todo.status === "completed" ? "✓" : ""}
-                </button>
+                <button className={styles.checkButton} type="button" aria-label={todo.status === "completed" ? `Mark ${todo.title} incomplete` : `Mark ${todo.title} complete`} onClick={() => toggleTodo(todo.id)}>{todo.status === "completed" ? "✓" : ""}</button>
                 <span className={styles.todoTitle}>{todo.title}</span>
-                <button
-                  className={styles.deleteButton}
-                  type="button"
-                  aria-label={`Delete ${todo.title}`}
-                  onClick={() => deleteTodo(todo.id)}
-                >
-                  ×
-                </button>
+                <button className={styles.deleteButton} type="button" aria-label={`Delete ${todo.title}`} onClick={() => deleteTodo(todo.id)}>×</button>
               </li>
             ))}
           </ul>
