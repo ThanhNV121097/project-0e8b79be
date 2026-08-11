@@ -11,7 +11,7 @@ import {
 } from "@/lib/mock/single-page-todo-experience";
 import styles from "./SinglePageTodoExperience.module.css";
 
-type ViewState = "default" | "loading" | "empty" | "error";
+type ViewState = "default" | "loading" | "error";
 
 export default function SinglePageTodoExperience() {
   const initialResponse = useMemo(() => getMockTodoList(), []);
@@ -22,7 +22,7 @@ export default function SinglePageTodoExperience() {
   const [viewState, setViewState] = useState<ViewState>("default");
 
   const response = toTodoListResponse(todos);
-  const visibleTodos = viewState === "empty" ? [] : response.data;
+  const visibleTodos = response.data;
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -80,18 +80,19 @@ export default function SinglePageTodoExperience() {
       return;
     }
 
-    setTodos((currentTodos) => {
-      const nextTodos = currentTodos.filter((todo) => todo.id !== todoId);
-      if (nextTodos.length === 0) {
-        setViewState("empty");
-      }
-      return nextTodos;
-    });
+    setTodos((currentTodos) => currentTodos.filter((todo) => todo.id !== todoId));
   }
 
   function resetTodos() {
     const resetResponse = getMockTodoList();
     setTodos(resetResponse.data);
+    setViewState("default");
+    setSaveMessage("");
+    setValidationMessage("");
+  }
+
+  function showEmptyState() {
+    setTodos([]);
     setViewState("default");
     setSaveMessage("");
     setValidationMessage("");
@@ -128,7 +129,7 @@ export default function SinglePageTodoExperience() {
         <div className={styles.stateControls} aria-label="Preview todo states">
           <button type="button" onClick={resetTodos}>Default</button>
           <button type="button" onClick={() => setViewState("loading")}>Loading</button>
-          <button type="button" onClick={() => setViewState("empty")}>Empty</button>
+          <button type="button" onClick={showEmptyState}>Empty</button>
           <button type="button" onClick={() => setViewState("error")}>Error</button>
         </div>
 
