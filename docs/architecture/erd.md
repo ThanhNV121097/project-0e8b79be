@@ -105,3 +105,26 @@ Initial migration filenames should follow the architecture convention, for examp
 | Question | Owner | Blocking |
 |---|---|---|
 | none | n/a | no |
+
+## 10. Story extension — Database-backed todo persistence
+
+No new entity is required beyond the existing `todos` table for this story. The reviewed UI mock module uses frontend DTO fields `id`, `title`, `completed`, `createdAt`, and `updatedAt`; these map directly to existing database columns.
+
+| Frontend/API field | Database source | Conversion |
+|---|---|---|
+| `id` | `todos.id` | UUID rendered as string. |
+| `title` | `todos.title` | Stored trimmed text. |
+| `completed` | `todos.is_completed` | Boolean renamed at the HTTP boundary to match the approved UI mock. |
+| `createdAt` | `todos.created_at` | RFC 3339 UTC string rendered in camelCase. |
+| `updatedAt` | `todos.updated_at` | RFC 3339 UTC string rendered in camelCase. |
+
+The mock uses sample ids such as `todo_20260811_001`; production ids remain UUID strings because the merged ERD already defines `todos.id uuid PRIMARY KEY` and backend operations need database-generated stable identifiers. This is the only intentional difference from the sample mock values; the field name and string type stay the same.
+
+### Migration plan for this story
+
+| Step | Forward migration | Backward migration | Safe on populated table |
+|---|---|---|---|
+| 1 | Apply the already-defined initial migration: enable `pgcrypto`, create `todos`, add title constraints, and create `idx_todos_created_at_id`. | Drop `idx_todos_created_at_id`, then drop `todos`; drop `pgcrypto` only if no other object depends on it. | Forward is safe on an empty database and safe on a populated database only if the table does not already exist. Backward is destructive on populated data and must be limited to disposable environments or run after backup. |
+| 2 | No additional schema changes for the Database-backed todo persistence story. | No additional rollback. | Safe; this story only binds API contracts to the existing table. |
+
+No foreign keys or `ON DELETE` actions are introduced because the app has no parent/child entities. Hard delete remains the lifecycle for `todos` rows.
