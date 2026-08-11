@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache-dependency-path: code/backend/go.sum
+      - name: Build
+        run: cd code/backend && go build ./...
+      - name: Vet
+        run: cd code/backend && go vet ./...
+      - name: Test
+        run: cd code/backend && go test ./...
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: code/frontend/package-lock.json
+      - name: Install dependencies
+        run: cd code/frontend && npm ci
+      - name: Lint
+        run: cd code/frontend && npm run lint
+      - name: Build
+        run: cd code/frontend && npm run build
+      - name: Test
+        run: cd code/frontend && npm test --if-present
+
+  compose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Validate Docker Compose
+        run: docker compose config -q
