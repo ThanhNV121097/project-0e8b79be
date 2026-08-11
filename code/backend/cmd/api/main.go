@@ -116,7 +116,7 @@ func main() {
 
 	server := &http.Server{
 		Addr:              ":" + listenPort(),
-		Handler:           withRequestLogging(withRequestID(mux)),
+		Handler:           withRequestID(withRequestLogging(mux)),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
@@ -432,7 +432,7 @@ func withRequestLogging(next http.Handler) http.Handler {
 		started := time.Now()
 		recorder := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 		next.ServeHTTP(recorder, r)
-		log.Printf("request_id=%s method=%s path=%s status=%d duration_ms=%d response_bytes=%d client_source_hash=%s", requestID(r), r.Method, r.URL.Path, recorder.status, time.Since(started).Milliseconds(), recorder.bytes, hashString(clientSource(r)))
+		log.Printf("request_id=%s timestamp=%s method=%s path_template=%s status=%d duration_ms=%d response_bytes=%d client_source_hash=%s", requestID(r), started.UTC().Format(time.RFC3339), r.Method, pathTemplate(r), recorder.status, time.Since(started).Milliseconds(), recorder.bytes, hashString(clientSource(r)))
 	})
 }
 
@@ -514,6 +514,13 @@ func hashString(value string) string {
 		hash *= 16777619
 	}
 	return fmt.Sprintf("%08x", hash)
+}
+
+func pathTemplate(r *http.Request) string {
+	if strings.HasPrefix(r.URL.Path, "/api/v1/todos/") {
+		return "/api/v1/todos/{todo_id}"
+	}
+	return r.URL.Path
 }
 
 func isUUID(s string) bool {
