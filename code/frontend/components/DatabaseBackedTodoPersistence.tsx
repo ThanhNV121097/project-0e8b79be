@@ -4,6 +4,8 @@ import { FormEvent, useMemo, useState } from "react";
 import {
   emptyTodoResponse,
   loadTodoError,
+  missingTodoError,
+  oneHundredTodoResponse,
   persistedTodoResponse,
   saveTodoError,
   type TodoDto,
@@ -11,6 +13,7 @@ import {
 import styles from "./DatabaseBackedTodoPersistence.module.css";
 
 type ViewMode = "default" | "loading" | "empty" | "error";
+type FailureMode = "none" | "save" | "missing";
 
 const initialTodos = [...persistedTodoResponse.data].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 
@@ -20,14 +23,14 @@ export function DatabaseBackedTodoPersistence() {
   const [input, setInput] = useState("");
   const [validation, setValidation] = useState("");
   const [notice, setNotice] = useState("Saved tasks are shown in oldest-first order.");
-  const [failNextSave, setFailNextSave] = useState(false);
+  const [failureMode, setFailureMode] = useState<FailureMode>("none");
 
   const summary = useMemo(() => {
     const completed = todos.filter((todo) => todo.completed).length;
     return `${completed} completed of ${todos.length} saved tasks`;
   }, [todos]);
 
-  function loadSavedTodos(nextMode: ViewMode = "default") {
+  function loadSavedTodos(nextMode: ViewMode | "many" = "default") {
     setValidation("");
     if (nextMode === "loading") {
       setMode("loading");
@@ -45,6 +48,12 @@ export function DatabaseBackedTodoPersistence() {
       setNotice(loadTodoError.error.message);
       return;
     }
+    if (nextMode === "many") {
+      setTodos(oneHundredTodoResponse.data);
+      setMode("default");
+      setNotice("Loaded 100 saved tasks without changing the controls.");
+      return;
+    }
     setTodos(initialTodos);
     setMode("default");
     setNotice("Saved tasks loaded from the shared list.");
@@ -57,9 +66,9 @@ export function DatabaseBackedTodoPersistence() {
       setValidation("Enter a task before adding it.");
       return;
     }
-    if (failNextSave) {
+    if (failureMode === "save") {
       setNotice(saveTodoError.error.message);
-      setFailNextSave(false);
+      setFailureMode("none");
       return;
     }
     const now = new Date().toISOString();
@@ -78,19 +87,33 @@ export function DatabaseBackedTodoPersistence() {
   }
 
   function toggleTodo(id: string) {
-    if (failNextSave) {
+    if (failureMode === "save") {
       setNotice("We could not save that change. The task is back to its last saved state.");
-      setFailNextSave(false);
+      setFailureMode("none");
       return;
     }
-    setTodos((current) => current.map((todo) => todo.id === id ? { ...todo, completed: !todo.completed, updatedAt: new Date().toISOString() } : todo));
+    if (failureMode === "missing") {
+      setTodos((current) => current.filter((todo) => todo.id !== id));
+      setNotice(missingTodoError.error.message);
+      setFailureMode("none");
+      return;
+    }
+    setTodos((current) => current.map((todo) => (
+      todo.id === id ? { ...todo, completed: !todo.completed, updatedAt: new Date().toISOString() } : todo
+    )));
     setNotice("Task status saved.");
   }
 
   function deleteTodo(id: string) {
-    if (failNextSave) {
+    if (failureMode === "save") {
       setNotice("We could not delete that task. It is still in the saved list.");
-      setFailNextSave(false);
+      setFailureMode("none");
+      return;
+    }
+    if (failureMode === "missing") {
+      setTodos((current) => current.filter((todo) => todo.id !== id));
+      setNotice(missingTodoError.error.message);
+      setFailureMode("none");
       return;
     }
     setTodos((current) => {
@@ -135,7 +158,9 @@ export function DatabaseBackedTodoPersistence() {
         <button className={styles.ghost} type="button" onClick={() => loadSavedTodos("loading")}>Loading</button>
         <button className={styles.ghost} type="button" onClick={() => loadSavedTodos("empty")}>Empty</button>
         <button className={styles.ghost} type="button" onClick={() => loadSavedTodos("error")}>Error</button>
-        <button className={styles.ghost} type="button" onClick={() => setFailNextSave(true)}>Fail next save</button>
+        <button className={styles.ghost} type="button" onClick={() => loadSavedTodos("many")}>100 saved</button>
+        <button className={styles.ghost} type="button" onClick={() => setFailureMode("save")}>Fail next save</button>
+        <button className={styles.ghost} type="button" onClick={() => setFailureMode("missing")}>Missing todo</button>
       </div>
 
       {mode === "loading" ? <LoadingState /> : null}
@@ -147,7 +172,7 @@ export function DatabaseBackedTodoPersistence() {
           <ul className={styles.list} aria-live="polite">
             {todos.map((todo) => (
               <li className={styles.row} key={todo.id}>
-                <button className={`${styles.check} ${todo.completed ? styles.checked : ""}`} type="button" onClick={() => toggleTodo(todo.id)} aria-label={todo.completed ? "Mark incomplete" : "Mark complete"}>{todo.completed ? "✓" : ""}</button>
+                <button className={`${styles.check} ${todo.completed ? styles.checked : ""}`} type="button" onClick={() => toggleTodo(todo.id)} aria-label={todo.completed ? "Mark incomplete" : "Mark complete"} aria-pressed={todo.completed}>{todo.completed ? "✓" : ""}</button>
                 <span className={todo.completed ? styles.completedText : styles.todoText}>{todo.title}</span>
                 <button className={styles.delete} type="button" onClick={() => deleteTodo(todo.id)} aria-label={`Delete ${todo.title}`}>×</button>
               </li>
