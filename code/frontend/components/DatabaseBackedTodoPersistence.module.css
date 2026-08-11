@@ -1,5 +1,46 @@
 .card {
-  width: min(100%, 680px);
+  --db-todo-card-width: 680px;
+  --db-todo-control-target: 44px;
+  --db-todo-icon-size: 48px;
+  --db-todo-mobile-breakpoint: 820px;
+  --color-card-bg: rgba(255,255,255,.92);
+  --color-success-text: #065F46;
+  --color-success-bg: #D1FAE5;
+  --color-warning-bg: #FEF3C7;
+  --color-warning-border: #FDE68A;
+  --color-warning-text: #92400E;
+  --color-danger-hover-bg: #FEE2E2;
+  --color-primary-control: #93C5FD;
+  --radius-xl: 18px;
+  --radius-2xl: 20px;
+  --radius-full: 999px;
+  --border-width: 1px;
+  --border-width-strong: 2px;
+  --shadow-lg: 0 14px 28px rgba(37,99,235,.24);
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 10px;
+  --space-4: 12px;
+  --space-5: 14px;
+  --space-6: 16px;
+  --space-7: 18px;
+  --space-8: 20px;
+  --space-9: 22px;
+  --space-10: 24px;
+  --space-11: 28px;
+  --space-12: 30px;
+  --space-13: 34px;
+  --space-hairline: 1px;
+  --space-sr: 1px;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-summary: 14px;
+  --text-app-title: 28px;
+  --text-mini-icon: 28px;
+  --duration-fast: .18s;
+  --duration-loading: .8s;
+  --easing: ease;
+  width: min(100%, var(--db-todo-card-width));
   margin: var(--space-11) auto 0;
   padding: var(--space-9);
   border: var(--border-width) solid var(--color-border);
@@ -90,7 +131,7 @@
 
 .primary,
 .ghost {
-  min-height: 44px;
+  min-height: var(--db-todo-control-target);
   border: 0;
 }
 
@@ -240,8 +281,8 @@
 .errorIcon {
   display: inline-grid;
   place-items: center;
-  width: 48px;
-  height: 48px;
+  width: var(--db-todo-icon-size);
+  height: var(--db-todo-icon-size);
   border-radius: var(--radius-2xl);
   background: var(--color-primary-soft);
   color: var(--color-primary);
