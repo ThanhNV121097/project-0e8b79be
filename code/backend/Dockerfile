@@ -14,12 +14,23 @@ RUN go mod download
 
 COPY . .
 
-# ./... rather than a named package path, which is the same command the
-# workspace runtime uses to build a project. It requires the module to hold
-# exactly one main package — a constraint that already applied before this file
-# existed, and one worth keeping: two entry points and neither runtime knows
-# which one is the server.
-RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /bin/server ./...
+# ./cmd/api, not ./... — and the difference is not style.
+#
+# `go build -o <file>` accepts exactly ONE package. Not one main package: one
+# package. This line used to say ./..., on the reasoning that a project has a
+# single entry point anyway, but ./... matches every package in the module, so
+# the first backend to grow an internal/ package broke the image build with
+#
+#   go: cannot write multiple packages to non-directory /bin/server
+#
+# and every Go backend worth deploying has one. Measured on a generated project
+# whose module held cmd/api, internal/db and migrations: three packages, and the
+# build failed on a module where nothing was wrong.
+#
+# cmd/api is the entry point the scaffold instructions mandate, so naming it
+# here is not a new constraint — it is the existing one, enforced where it can
+# fail loudly instead of silently matching too much.
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /bin/server ./cmd/api
 
 # ── Runtime ──────────────────────────────────────────────────────────────────
 

@@ -5,14 +5,6 @@
 
 services:
   postgres:
-    # `local` profile: this starts for development and for CI, and does NOT
-    # start in a deployment. deploy.yml points DATABASE_URL at the shared
-    # instance instead — thirty deployed projects each running their own
-    # postgres would be several GB of near-empty servers.
-    #
-    #   docker compose --profile local up -d --wait
-    #
-    profiles: ["local"]
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-app}
