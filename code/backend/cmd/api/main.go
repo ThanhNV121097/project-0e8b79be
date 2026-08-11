@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -300,7 +301,6 @@ func writeOK(a *app, w http.ResponseWriter, r *http.Request) bool {
 
 func decode(w http.ResponseWriter, r *http.Request, v any) bool {
 	dec := json.NewDecoder(r.Body)
-	dec.DisallowUnknownFields()
 	if err := dec.Decode(v); err != nil {
 		writeErr(w, r, http.StatusBadRequest, "BAD_REQUEST", "Request is invalid.", nil)
 		return false
