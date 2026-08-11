@@ -2,81 +2,80 @@
 
 Module: `todos`
 Function: Database-backed todo persistence
-Requirements covered: TODOS-005, TODOS-006
-Risk level: Medium — this function controls durable storage for create, read, update, and delete operations. The app has no roles or payments, but persistence failures directly affect user trust.
+Risk level: Medium. This function writes and reads user task data durably through a database; loss of saved state would break the product's core value. Cases focus on the approved acceptance criteria for persisted create, read, update, delete, reload, empty, and explicit error-recovery behaviour.
 
 ## Automated test cases
 
 **Scenario**: Load saved active and completed todos
-**Given**: The database contains two non-deleted todos for the deployment: `Buy milk` saved as active and `Pay bills` saved as completed
-**When**: The User opens the app
-**Then**: The todo list shows `Buy milk` as active and `Pay bills` as completed
+**Given**: The database contains two non-deleted todos for the deployment: `Buy milk` saved as active and `Pay rent` saved as completed, with `Buy milk` created before `Pay rent`.
+**When**: The User opens the app.
+**Then**: The todo list shows `Buy milk` as active before `Pay rent`, and shows `Pay rent` as completed.
 
-Traceability: TODOS-005 AC-1
+Traceability: TODOS-005 AC-1; TODOS-005 behaviour 1, 2, 3.
 
-**Scenario**: Added todo remains after refresh
-**Given**: The app is open and the database is reachable
-**When**: The User adds `Book dentist` and refreshes the page after the add action succeeds
-**Then**: The todo list shows `Book dentist` as an active todo after refresh
+**Scenario**: Added todo remains after page refresh
+**Given**: The app is open and the database is reachable.
+**When**: The User enters `Buy milk`, adds the todo, waits for the add action to complete successfully, and refreshes the page.
+**Then**: A todo labelled `Buy milk` appears in the list as active after the refresh.
 
-Traceability: TODOS-005 AC-2; TODOS-006 AC-1
+Traceability: TODOS-005 AC-2; TODOS-006 AC-1; TODOS-006 behaviour 1.
 
-**Scenario**: Completed todo remains completed after refresh
-**Given**: The database contains an active todo labelled `Water plants` and the app shows it as active
-**When**: The User marks `Water plants` complete and refreshes the page after the status change succeeds
-**Then**: The todo list shows `Water plants` as completed after refresh
+**Scenario**: Completed status remains after page refresh
+**Given**: A saved active todo labelled `Buy milk` is visible in the list.
+**When**: The User marks `Buy milk` complete, waits for the status change to complete successfully, and refreshes the page.
+**Then**: The todo labelled `Buy milk` appears completed after the refresh.
 
-Traceability: TODOS-005 AC-3; TODOS-006 AC-2
+Traceability: TODOS-005 AC-3; TODOS-006 AC-2; TODOS-006 behaviour 2.
 
-**Scenario**: Uncompleted todo remains active after refresh
-**Given**: The database contains a completed todo labelled `Submit report` and the app shows it as completed
-**When**: The User marks `Submit report` incomplete and refreshes the page after the status change succeeds
-**Then**: The todo list shows `Submit report` as active after refresh
+**Scenario**: Uncompleted status remains after page refresh
+**Given**: A saved completed todo labelled `Buy milk` is visible in the list.
+**When**: The User marks `Buy milk` incomplete, waits for the status change to complete successfully, and refreshes the page.
+**Then**: The todo labelled `Buy milk` appears active after the refresh.
 
-Traceability: TODOS-006 AC-3
+Traceability: TODOS-006 AC-3; TODOS-006 behaviour 2.
 
-**Scenario**: Deleted todo remains absent after refresh
-**Given**: The database contains a visible todo labelled `Archive notes`
-**When**: The User deletes `Archive notes` and refreshes the page after the delete action succeeds
-**Then**: The todo list does not show `Archive notes` after refresh
+**Scenario**: Deleted todo remains absent after page refresh
+**Given**: A saved todo labelled `Buy milk` is visible in the list.
+**When**: The User deletes `Buy milk`, waits for the delete action to complete successfully, and refreshes the page.
+**Then**: No todo labelled `Buy milk` appears in the list after the refresh.
 
-Traceability: TODOS-005 AC-4; TODOS-006 AC-4
+Traceability: TODOS-005 AC-4; TODOS-006 AC-4; TODOS-006 behaviour 3.
 
-**Scenario**: Empty saved list shows empty state
-**Given**: The database contains no non-deleted todos for the deployment
-**When**: The User opens the app
-**Then**: The todo list area shows the friendly empty state explaining that the User can add a first task
+**Scenario**: Empty database shows empty state
+**Given**: The database contains no non-deleted todos for the deployment.
+**When**: The User opens the app.
+**Then**: The todo list area shows the friendly empty state explaining that the User can add a first task.
 
-Traceability: TODOS-005 AC-5
+Traceability: TODOS-005 AC-5; TODOS-005 behaviour 4.
 
-**Scenario**: Load failure shows retryable non-technical error
-**Given**: Saved todos cannot be loaded from the database
-**When**: The User opens the app
-**Then**: The todo list area shows a clear non-technical error state with a retry path
+**Scenario**: Failed load shows retryable non-technical error state
+**Given**: Saved todos cannot be loaded from the database.
+**When**: The User opens the app.
+**Then**: The todo list area shows a non-technical error state and includes a retry path the User can activate.
 
-Traceability: TODOS-005 AC-6
+Traceability: TODOS-005 AC-6; TODOS-005 behaviour 5; Reliability NFR.
 
 **Scenario**: Failed add preserves current input text
-**Given**: The app is open, the todo input contains `Call Sam`, and saving a new todo cannot complete
-**When**: The User adds the todo and the save error is shown
-**Then**: The todo input still contains `Call Sam`
+**Given**: The app is open and saving a new todo cannot complete.
+**When**: The User enters `Buy milk` and activates the add action.
+**Then**: A non-technical error is shown, and the add-todo input still contains `Buy milk`.
 
-Traceability: TODOS-006 AC-5
+Traceability: TODOS-006 AC-5; TODOS-006 behaviour 4, 5; Reliability NFR.
 
 **Scenario**: Failed status change returns to last saved state
-**Given**: The database contains an active todo labelled `Feed cat`, the app shows it as active, and saving a status change cannot complete
-**When**: The User marks `Feed cat` complete and the save error is shown
-**Then**: The visible todo `Feed cat` is shown as active, matching its last saved state
+**Given**: A saved active todo labelled `Buy milk` is visible in the list and saving status changes cannot complete.
+**When**: The User marks `Buy milk` complete.
+**Then**: A non-technical error is shown, and `Buy milk` is displayed as active, matching its last saved status.
 
-Traceability: TODOS-006 AC-6
+Traceability: TODOS-006 AC-6; TODOS-006 behaviour 4; Reliability NFR.
 
-**Scenario**: Failed delete restores last saved list state
-**Given**: The database contains a visible todo labelled `Renew license`, the app shows it, and saving a delete cannot complete
-**When**: The User deletes `Renew license` and the save error is shown
-**Then**: The visible list shows `Renew license`, matching its last saved state
+**Scenario**: Failed delete keeps last saved todo visible
+**Given**: A saved todo labelled `Buy milk` is visible in the list and saving deletes cannot complete.
+**When**: The User deletes `Buy milk`.
+**Then**: A non-technical error is shown, and `Buy milk` remains visible or is restored in the list.
 
-Traceability: TODOS-006 AC-6
+Traceability: TODOS-006 AC-6; TODOS-006 behaviour 4; Reliability NFR.
 
-## Manual test cases
+## Manual checks
 
-None. These behaviours are observable through UI or integration tests by controlling database contents and simulated service responses.
+None. The required persistence, reload, status, deletion, empty-state, and explicit error-recovery behaviours are observable through automated UI/integration tests with controllable database and service failure fixtures.
