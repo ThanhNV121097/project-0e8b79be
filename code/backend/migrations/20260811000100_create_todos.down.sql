@@ -1,0 +1,3 @@
+DROP INDEX IF EXISTS idx_todos_created_at_id;
+DROP TABLE IF EXISTS todos;
+DROP EXTENSION IF EXISTS pgcrypto;
