@@ -9,7 +9,7 @@ import {
   TodoDto,
   todoErrorMessage,
   updateTodoStatus,
-} from "../lib/api/todos";
+} from "@/lib/api/todos";
 
 const loadErrorMessage = "We could not load your tasks. Please try again.";
 
