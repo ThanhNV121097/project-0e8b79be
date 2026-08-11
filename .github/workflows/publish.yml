@@ -21,8 +21,46 @@ permissions:
   packages: write
 
 jobs:
+  # Is there anything to build yet?
+  #
+  # These files land on main before any code does: the orchestrator commits the
+  # container and CI setup at repo-creation time, deliberately, so the team
+  # inherits them rather than writing them by hand. For the hours between that
+  # commit and the first merged story, the Dockerfiles reference a go.mod and a
+  # package.json that do not exist, and every push to main failed — measured at
+  # 21 red runs on one project before a single line of application code was
+  # written.
+  #
+  # Red CI that means "not yet" is worse than no CI. It burns Actions minutes,
+  # it trains everyone to ignore the badge, and the orchestrator reads the same
+  # signal before deploying — a project that arrived at its deploy step early
+  # would be told its images failed to publish when nothing had been asked to
+  # build.
+  #
+  # A skipped job concludes as success, which is the honest answer to "did this
+  # commit break the build".
+  guard:
+    name: Source present?
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Look for a service manifest
+        id: check
+        run: |
+          if [ -f code/backend/go.mod ] || [ -f code/frontend/package.json ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No code/backend/go.mod and no code/frontend/package.json — nothing to build yet, skipping."
+          fi
+
   publish:
     name: Build and push
+    needs: guard
+    if: needs.guard.outputs.ready == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
