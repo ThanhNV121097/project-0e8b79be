@@ -2,11 +2,13 @@
 
 Engine: PostgreSQL 16
 Last updated: 2026-08-11
-Source requirements: `docs/todos/SRS.md`
+Source requirements: `docs/todos/SRS.md`, `docs/todos/stories/single-page-todo-experience.md`, reviewed UI mock module from PR #13 (`code/frontend/lib/mock/single-page-todo-experience.ts`)
 
 ## 1. Overview
 
-This schema stores the deployment-level todo list for Todo List App v2. The only aggregate root is `todos`: each row represents one task with its title, completion state, and timestamps needed for stable ordering and last-saved state. Login, user identity, private lists, due dates, priorities, labels, comments, reminders, recurrence, search metadata, and undo/restore history are deliberately kept out of the database because the SRS excludes them.
+This schema stores the deployment-level todo list for Todo List App v2. The only aggregate root is `todos`: each row represents one task with its title, completion state, and timestamps needed for stable ordering and last-saved state. Login, user identity, private lists, due dates, priorities, labels, comments, reminders, recurrence, search metadata, filters, and undo/restore history are deliberately kept out of the database because the SRS excludes them.
+
+The reviewed Single-page todo UI mock exposes todo status as the string union `"active" | "completed"` and timestamps as camelCase `createdAt` / `updatedAt`. The database keeps the normalized boolean column `is_completed`; the Go API maps `false -> "active"` and `true -> "completed"` at the boundary so the approved UI can replace its mock adapter without reworking components.
 
 ## 2. Diagram
 
@@ -33,9 +35,9 @@ Cardinality notation: `||` exactly one, `o|` zero or one, `}o` zero or many, `}|
 |---|---|---|---|---|---|
 | `id` | `uuid` | no | `gen_random_uuid()` | PK | Stable surrogate identifier for create response, status changes, and deletion. |
 | `title` | `text` | no | none | no | Trimmed todo label displayed to users; duplicate titles are allowed. |
-| `is_completed` | `boolean` | no | `false` | no | Completion status; `false` means active and `true` means completed. |
-| `created_at` | `timestamptz` | no | `now()` | no | Creation time used for stable oldest-first ordering across refreshes. |
-| `updated_at` | `timestamptz` | no | `now()` | no | Last successful status/title row update time; used as the latest saved state marker if needed. |
+| `is_completed` | `boolean` | no | `false` | no | Completion status in storage; `false` maps to API/UI status `active`, `true` maps to `completed`. |
+| `created_at` | `timestamptz` | no | `now()` | no | Creation time used for stable ordering across refreshes and mapped to API/UI `createdAt`. |
+| `updated_at` | `timestamptz` | no | `now()` | no | Last successful row update time and mapped to API/UI `updatedAt`. |
 
 **Nullable columns** — none.
 
@@ -56,15 +58,40 @@ Cardinality notation: `||` exactly one, `o|` zero or one, `}o` zero or many, `}|
 
 **Lifecycle** — hard delete. TODOS-004 and TODOS-005 require deleted todos to be absent after refresh, and the SRS excludes undo/restore and audit history. A deleted todo has no child rows and no reporting requirement, so physical deletion keeps reads simple and avoids `deleted_at IS NULL` filters on every list query.
 
-## 4. Enumerations
+## 4. API field mapping for the Single-page todo experience
 
-No enumerations are needed. Completion status is a boolean because the SRS defines exactly two states: active and completed.
+The reviewed UI mock module is the frontend contract for this story:
 
-| Name | Values | Mechanism | Why |
-|---|---|---|---|
-| n/a | n/a | n/a | No fixed multi-value domain exists in the approved requirements. |
+```ts
+type TodoDto = {
+  id: string;
+  title: string;
+  status: "active" | "completed";
+  createdAt: string;
+  updatedAt: string;
+};
 
-## 5. Access patterns
+type TodoListResponse = {
+  data: TodoDto[];
+  meta: { total: number; active: number; completed: number };
+};
+```
+
+| Database field | API/UI field | Mapping |
+|---|---|---|
+| `id` | `id` | UUID rendered as a string. |
+| `title` | `title` | Stored trimmed text returned as-is. |
+| `is_completed` | `status` | `false` => `active`; `true` => `completed`. |
+| `created_at` | `createdAt` | RFC 3339 UTC timestamp string. |
+| `updated_at` | `updatedAt` | RFC 3339 UTC timestamp string. |
+
+No additional columns are needed for UI-only counts. `meta.total`, `meta.active`, and `meta.completed` are computed by the API from the returned collection for this small app scope.
+
+## 5. Enumerations
+
+No database enumerations are needed. Completion status is a boolean in storage because the SRS defines exactly two states: active and completed. The API exposes the reviewed UI string union `active | completed` for component compatibility.
+
+## 6. Access patterns
 
 | # | Pattern | Frequency | Index used |
 |---|---|---|---|
@@ -73,7 +100,7 @@ No enumerations are needed. Completion status is a boolean because the SRS defin
 | 3 | Update one todo's `is_completed` and `updated_at` by `id`. | Medium: each complete/uncomplete action. | Primary key index on `id`. |
 | 4 | Delete one todo by `id`. | Medium: each delete action. | Primary key index on `id`. |
 
-## 6. Data volume and growth
+## 7. Data volume and growth
 
 | Table | Rows at launch | Growth | Retention |
 |---|---|---|---|
@@ -81,7 +108,7 @@ No enumerations are needed. Completion status is a boolean because the SRS defin
 
 No table is expected to exceed 10M rows within a year for this simple shared-list app. No partitioning or archival strategy is needed for the approved scope.
 
-## 7. Integrity, privacy, and security
+## 8. Integrity, privacy, and security
 
 - Database-enforced invariants: every todo has a surrogate UUID primary key, a non-null trimmed title of 1 to 200 characters, a non-null boolean completion state, and non-null creation/update timestamps.
 - Application-enforced invariants: request bodies are validated at the HTTP boundary before writes so users receive clear non-technical validation errors instead of raw database constraint errors; the database constraints remain the final protection against invalid rows.
@@ -90,7 +117,7 @@ No table is expected to exceed 10M rows within a year for this simple shared-lis
 - Row-level access: none. The SRS defines one shared deployment-level list accessible to any visitor without login.
 - Concurrency: last successful write wins for status changes and deletes, matching TODOS-003 and TODOS-006. Updating or deleting a missing `id` returns a not-found application response and does not require extra schema state.
 
-## 8. Migrations
+## 9. Migrations
 
 | # | Change | Forward | Backward | Safe on non-empty table |
 |---|---|---|---|---|
@@ -100,7 +127,7 @@ No table is expected to exceed 10M rows within a year for this simple shared-lis
 
 Initial migration filenames should follow the architecture convention, for example `20260811000100_create_todos.up.sql` and `20260811000100_create_todos.down.sql`. This task records the schema design only; Dev will implement migrations in the backend story.
 
-## 9. Open questions
+## 10. Open questions
 
 | Question | Owner | Blocking |
 |---|---|---|
