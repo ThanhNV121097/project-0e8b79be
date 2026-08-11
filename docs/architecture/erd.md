@@ -23,7 +23,7 @@ erDiagram
     }
 ```
 
-Cardinality notation: `||` exactly one, `o|` zero or one, `}o` zero or many, `}|` one or many. There are no inter-table relationships in this schema because the app has no login, accounts, lists, or child entities.
+There are no inter-table relationships in this schema because the app has no login, accounts, lists, or child entities.
 
 ## 3. Entities
 
@@ -127,7 +127,11 @@ No table is expected to exceed 10M rows within a year for this simple shared-lis
 
 Initial migration filenames should follow the architecture convention, for example `20260811000100_create_todos.up.sql` and `20260811000100_create_todos.down.sql`. This task records the schema design only; Dev will implement migrations in the backend story.
 
-## 10. Open questions
+## 10. Story design extension note
+
+This story requires no schema beyond the `todos` entity above. The extension point for the approved UI is the API mapping layer: it must return the reviewed DTO shape while keeping storage normalized.
+
+## 11. Open questions
 
 | Question | Owner | Blocking |
 |---|---|---|
