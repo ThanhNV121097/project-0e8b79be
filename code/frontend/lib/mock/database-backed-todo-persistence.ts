@@ -62,6 +62,24 @@ export const persistedTodoResponse: TodoListResponse = {
   },
 };
 
+export const oneHundredTodoResponse: TodoListResponse = {
+  data: Array.from({ length: 100 }, (_, index) => {
+    const padded = String(index + 1).padStart(3, "0");
+    const createdAt = `2026-08-11T12:${String(index).padStart(2, "0")}:00.000Z`;
+    return {
+      id: `todo_20260811_bulk_${padded}`,
+      title: `Saved database task ${padded}`,
+      completed: index % 3 === 0,
+      createdAt,
+      updatedAt: createdAt,
+    };
+  }),
+  meta: {
+    total: 100,
+    order: "created_at_asc",
+  },
+};
+
 export const emptyTodoResponse: TodoListResponse = {
   data: [],
   meta: {
@@ -81,5 +99,12 @@ export const saveTodoError: TodoApiError = {
   error: {
     code: "CREATE_FAILED",
     message: "We could not save that task yet. Your text is still here, so please try again.",
+  },
+};
+
+export const missingTodoError: TodoApiError = {
+  error: {
+    code: "NOT_FOUND",
+    message: "That task was already changed elsewhere. The list has been refreshed.",
   },
 };
