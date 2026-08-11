@@ -150,9 +150,7 @@ func (a *app) todoByID(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *app) list(w http.ResponseWriter, r *http.Request) {
-	if !a.limiter.allow(clientSource(r), 120) {
-		w.Header().Set("Retry-After", "60")
-		writeErr(w, r, http.StatusTooManyRequests, "RATE_LIMITED", "Too many requests. Please try again shortly.", nil)
+	if !a.allowRead(w, r) {
 		return
 	}
 
@@ -190,7 +188,7 @@ func (a *app) list(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *app) create(w http.ResponseWriter, r *http.Request) {
-	if !writeOK(a, w, r) {
+	if !a.allowWriteJSON(w, r) {
 		return
 	}
 	var payload struct {
@@ -222,9 +220,8 @@ func (a *app) create(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Location", "/api/v1/todos/"+t.ID)
 	writeJSON(w, http.StatusCreated, t)
 }
-
 func (a *app) patch(w http.ResponseWriter, r *http.Request, id string) {
-	if !writeOK(a, w, r) {
+	if !a.allowWriteJSON(w, r) {
 		return
 	}
 	var payload struct {
@@ -256,10 +253,10 @@ func (a *app) patch(w http.ResponseWriter, r *http.Request, id string) {
 }
 
 func (a *app) delete(w http.ResponseWriter, r *http.Request, id string) {
-	if !writeOK(a, w, r) {
+	if !a.allowWrite(w, r) {
 		return
 	}
-	if r.ContentLength > 0 {
+	if r.TransferEncoding != nil || r.ContentLength > 0 {
 		writeErr(w, r, http.StatusBadRequest, "BAD_REQUEST", "Request is invalid.", nil)
 		return
 	}
@@ -285,17 +282,33 @@ func (a *app) queryOne(ctx context.Context, query string, args ...any) (todo, er
 	return scanTodo(a.db.QueryRowContext(queryCtx, query, args...))
 }
 
-func writeOK(a *app, w http.ResponseWriter, r *http.Request) bool {
-	if !a.limiter.allow(clientSource(r), 60) {
-		w.Header().Set("Retry-After", "60")
-		writeErr(w, r, http.StatusTooManyRequests, "RATE_LIMITED", "Too many requests. Please try again shortly.", nil)
+func (a *app) allowRead(w http.ResponseWriter, r *http.Request) bool {
+	return a.allow(w, r, 120)
+}
+
+func (a *app) allowWrite(w http.ResponseWriter, r *http.Request) bool {
+	return a.allow(w, r, 60)
+}
+
+func (a *app) allowWriteJSON(w http.ResponseWriter, r *http.Request) bool {
+	if !a.allowWrite(w, r) {
 		return false
 	}
-	if contentType := r.Header.Get("Content-Type"); contentType == "" || !strings.HasPrefix(contentType, "application/json") {
+	contentType := r.Header.Get("Content-Type")
+	if contentType == "" || !strings.HasPrefix(strings.ToLower(contentType), "application/json") {
 		writeErr(w, r, http.StatusBadRequest, "BAD_REQUEST", "Request is invalid.", nil)
 		return false
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, 16*1024)
+	return true
+}
+
+func (a *app) allow(w http.ResponseWriter, r *http.Request, maxHits int) bool {
+	if !a.limiter.allow(clientSource(r), maxHits) {
+		w.Header().Set("Retry-After", "60")
+		writeErr(w, r, http.StatusTooManyRequests, "RATE_LIMITED", "Too many requests. Please try again shortly.", nil)
+		return false
+	}
 	return true
 }
 
